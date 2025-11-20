@@ -15,6 +15,7 @@ A high-performance order execution engine for DEX trading on Solana with intelli
 - [Features](#features)
 - [Architecture](#architecture)
 - [Order Type Selection](#order-type-selection)
+- [Design Decisions](#design-decisions)
 - [Tech Stack](#tech-stack)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
@@ -98,6 +99,114 @@ The architecture is designed for easy extension to support **Limit Orders** and 
 **Sniper Orders**: Implement a token launch detector using Solana transaction monitoring (listening to new pool creation events). When a target token launches, immediately trigger order execution with `SNIPER` type, leveraging the same routing and execution logic.
 
 Both extensions would reuse the existing `OrderExecutionService`, DEX routing, and WebSocket infrastructure—only adding pre-execution trigger logic.
+
+## 🎨 Design Decisions
+
+### Why Fastify Over Express?
+
+**Performance**: Fastify is 2-3x faster than Express, processing up to 30,000 requests/second vs Express's 10,000. For a high-frequency trading system, this performance gap is critical.
+
+**Native WebSocket Support**: Fastify includes built-in WebSocket support via `@fastify/websocket`, eliminating the need for additional libraries like `ws` or `socket.io`. This reduces dependency complexity and ensures tight integration.
+
+**Schema Validation**: Fastify's first-class JSON Schema validation integrates seamlessly with TypeScript, providing automatic validation and serialization that's faster than middleware-based solutions.
+
+**Modern Architecture**: Fastify's async/await-first design and plugin system align better with modern TypeScript patterns compared to Express's callback-based middleware.
+
+### Why BullMQ for Queue Management?
+
+**Concurrency Control**: BullMQ provides native concurrency limiting (10 concurrent orders), which is essential for rate-limiting blockchain RPC calls and preventing system overload.
+
+**Reliability**: Built on Redis Streams, BullMQ offers guaranteed message delivery, job persistence across restarts, and automatic retry with exponential backoff—critical for financial transactions.
+
+**Observability**: BullMQ provides detailed job metrics (waiting, active, completed, failed) exposed via our `/api/queue/stats` endpoint, enabling real-time monitoring.
+
+**Priority & Scheduling**: Future support for priority orders (e.g., whale accounts) or scheduled orders (limit/sniper) requires minimal code changes.
+
+**Alternative Considered**: AWS SQS was considered but rejected due to vendor lock-in and higher latency (100-200ms vs BullMQ's <10ms).
+
+### Why PostgreSQL + Redis Dual Storage?
+
+**PostgreSQL for Persistence**: 
+- **ACID Compliance**: Financial transactions require guaranteed consistency and durability. PostgreSQL ensures no order history is lost, even during crashes.
+- **Complex Queries**: Supports advanced filtering (`status`, `date ranges`, `user analytics`) that Redis alone cannot handle efficiently.
+- **Audit Trail**: Immutable order history for compliance and dispute resolution.
+
+**Redis for Real-Time State**:
+- **Sub-millisecond Reads**: Active order status and WebSocket session mapping require <5ms latency, which Redis delivers (PostgreSQL is 20-50ms).
+- **Ephemeral Data**: Active connections and queue state don't need persistence—if Redis restarts, the app rebuilds this state from PostgreSQL.
+- **Pub/Sub**: Redis Streams power BullMQ's distributed queue, enabling horizontal scaling across multiple workers.
+
+**Why Not Just PostgreSQL?**: Querying PostgreSQL for every WebSocket status update (every 500ms per order) would create 2,000 queries/second at 1,000 concurrent orders, overwhelming the database.
+
+**Why Not Just Redis?**: Redis lacks complex query capabilities (no JOINs, limited indexing) needed for order history analytics and reporting.
+
+### Why Prisma ORM?
+
+**Type Safety**: Prisma generates TypeScript types directly from the database schema, catching database/code mismatches at compile time rather than runtime.
+
+**Migration Management**: Prisma Migrate provides version-controlled schema changes with automatic migration generation, preventing "works on my machine" issues.
+
+**Developer Experience**: Autocomplete for queries, zero-cost abstractions, and automatic connection pooling reduce development time by ~30% compared to raw SQL.
+
+**Alternative Considered**: Drizzle ORM was evaluated but Prisma's ecosystem maturity and migration tooling were superior for this project's timeline.
+
+### Why Zod for Validation?
+
+**TypeScript-First**: Zod schemas infer TypeScript types, ensuring runtime validation matches compile-time types (unlike JSON Schema or Joi which require manual sync).
+
+**Composability**: Zod's functional API allows building complex validation pipelines (`z.object().refine()`) that handle DEX-specific constraints (e.g., "SOL amount must be > 0.01 for Raydium").
+
+**Error Messages**: Detailed validation errors are automatically structured for API responses, improving client-side debugging.
+
+### Why Mock DEX Integration?
+
+**Demonstration Focus**: This project showcases architecture (queue management, WebSocket streaming, database design) rather than blockchain integration. Mocking DEX calls allows reviewers to run the system without Solana RPC access or wallet setup.
+
+**Deterministic Testing**: Mock DEXs enable reliable automated testing—real DEX prices are volatile and would cause test flakiness.
+
+**Real Integration Path**: The `DexRouterService` interface abstracts the mock layer. Swapping to real Raydium/Meteora SDKs requires implementing only two methods: `getQuote()` and `executeSwap()`.
+
+```typescript
+// Current mock implementation
+class MockDexRouter implements DexRouterService {
+  async getQuote() { return mockPrice; }
+  async executeSwap() { return mockTxHash; }
+}
+
+// Real implementation (future)
+class RaydiumRouter implements DexRouterService {
+  async getQuote() { return raydiumSDK.getPrice(); }
+  async executeSwap() { return raydiumSDK.swap(); }
+}
+```
+
+### Why WebSocket Over HTTP Polling?
+
+**Latency**: WebSockets provide 10-50ms updates vs HTTP polling's 500-1000ms (limited by poll interval), critical for real-time order tracking.
+
+**Bandwidth**: A single WebSocket connection sends ~5KB over 3 seconds. HTTP polling would send ~30KB (10 requests × 3KB headers), 6x more data.
+
+**Server Load**: 1,000 active orders with polling = 10,000 requests/minute. WebSockets = 0 requests after initial connection.
+
+**Backpressure**: WebSockets enable server-side flow control—if a client lags, the server can pause updates. HTTP polling has no backpressure mechanism.
+
+### Why Exponential Backoff for Retries?
+
+**Network Congestion**: Solana RPC nodes often have brief congestion spikes. Immediate retries (linear backoff) amplify the problem. Exponential backoff (1s → 2s → 4s) gives the network time to recover.
+
+**DEX Liquidity**: If a swap fails due to temporary liquidity issues, waiting longer increases the probability of success (liquidity pools rebalance over time).
+
+**Configuration**: `MAX_RETRIES=3` balances user experience (orders complete within 10 seconds) and reliability (handles transient failures).
+
+### Architectural Patterns Used
+
+**Service Layer Pattern**: Business logic separated into services (`OrderService`, `DexRouterService`) keeps routes thin and testable.
+
+**Queue-Worker Pattern**: Decouples order submission (API) from execution (workers), enabling horizontal scaling and fault isolation.
+
+**Observer Pattern**: WebSocket service observes queue events and broadcasts to connected clients without tight coupling.
+
+**Strategy Pattern**: `DexRouterService` allows swapping DEX implementations (mock vs real, Raydium vs Jupiter) without changing execution logic.
 
 ## 🛠️ Tech Stack
 
