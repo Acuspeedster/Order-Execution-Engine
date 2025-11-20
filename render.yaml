@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: order-execution-engine
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: order-engine-db
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: order-engine-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: order-engine-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: order-engine-redis
+          property: password
+      - key: MAX_CONCURRENT_ORDERS
+        value: 10
+      - key: ORDERS_PER_MINUTE
+        value: 100
+      - key: MAX_RETRIES
+        value: 3
+      - key: DEX_QUOTE_TIMEOUT
+        value: 5000
+      - key: MOCK_EXECUTION_DELAY
+        value: 2500
+
+databases:
+  - name: order-engine-db
+    databaseName: order_engine
+    plan: free
+    region: oregon
+
+services:
+  - type: redis
+    name: order-engine-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: noeviction
