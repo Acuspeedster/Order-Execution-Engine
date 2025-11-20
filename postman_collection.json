@@ -1,0 +1,363 @@
+{
+  "info": {
+    "name": "Order Execution Engine API",
+    "description": "Complete API collection for testing the Order Execution Engine with DEX routing and WebSocket updates",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        },
+        "description": "Check if the API is running and healthy"
+      },
+      "response": []
+    },
+    {
+      "name": "Execute Market Order - SOL to USDC",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Note: This endpoint uses WebSocket upgrade",
+              "// Use a WebSocket client to connect and receive real-time updates",
+              "// Initial HTTP response will contain orderId"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"SOL\",\n  \"toToken\": \"USDC\",\n  \"amount\": 10,\n  \"slippageTolerance\": 0.01\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Submit a market order to swap 10 SOL for USDC with 1% slippage tolerance. Connection upgrades to WebSocket for real-time status updates."
+      },
+      "response": []
+    },
+    {
+      "name": "Execute Market Order - Large Amount",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"SOL\",\n  \"toToken\": \"USDC\",\n  \"amount\": 100,\n  \"slippageTolerance\": 0.02\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Submit a large market order with 2% slippage tolerance"
+      },
+      "response": []
+    },
+    {
+      "name": "Execute Market Order - Tight Slippage",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"USDC\",\n  \"toToken\": \"SOL\",\n  \"amount\": 1000,\n  \"slippageTolerance\": 0.005\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Submit order with tight 0.5% slippage tolerance"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Order Details",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "{{orderId}}"]
+        },
+        "description": "Retrieve details of a specific order by ID. Set {{orderId}} variable with actual order ID."
+      },
+      "response": []
+    },
+    {
+      "name": "Get Pending Orders",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/status/pending",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "status", "pending"]
+        },
+        "description": "Get all orders with PENDING status"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Routing Orders",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/status/routing",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "status", "routing"]
+        },
+        "description": "Get all orders currently being routed (comparing DEX prices)"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Confirmed Orders",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/status/confirmed",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "status", "confirmed"]
+        },
+        "description": "Get all successfully executed orders"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Failed Orders",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/status/failed",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "status", "failed"]
+        },
+        "description": "Get all orders that failed execution"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Queue Statistics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/queue/stats",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "queue", "stats"]
+        },
+        "description": "Get current queue statistics including waiting, active, completed, and failed jobs"
+      },
+      "response": []
+    },
+    {
+      "name": "Bulk Order Submission - Test 1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"SOL\",\n  \"toToken\": \"USDC\",\n  \"amount\": 5,\n  \"slippageTolerance\": 0.01\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "First of 5 concurrent order submissions for testing"
+      },
+      "response": []
+    },
+    {
+      "name": "Bulk Order Submission - Test 2",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"SOL\",\n  \"toToken\": \"USDC\",\n  \"amount\": 7,\n  \"slippageTolerance\": 0.015\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Second of 5 concurrent order submissions"
+      },
+      "response": []
+    },
+    {
+      "name": "Bulk Order Submission - Test 3",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"USDC\",\n  \"toToken\": \"SOL\",\n  \"amount\": 500,\n  \"slippageTolerance\": 0.02\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Third of 5 concurrent order submissions"
+      },
+      "response": []
+    },
+    {
+      "name": "Bulk Order Submission - Test 4",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"SOL\",\n  \"toToken\": \"USDC\",\n  \"amount\": 15,\n  \"slippageTolerance\": 0.01\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Fourth of 5 concurrent order submissions"
+      },
+      "response": []
+    },
+    {
+      "name": "Bulk Order Submission - Test 5",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"USDC\",\n  \"toToken\": \"SOL\",\n  \"amount\": 800,\n  \"slippageTolerance\": 0.025\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Fifth of 5 concurrent order submissions"
+      },
+      "response": []
+    },
+    {
+      "name": "Invalid Order - Missing Fields",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"SOL\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Test validation - should return error for missing required fields"
+      },
+      "response": []
+    },
+    {
+      "name": "Invalid Order - Negative Amount",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"market\",\n  \"fromToken\": \"SOL\",\n  \"toToken\": \"USDC\",\n  \"amount\": -10,\n  \"slippageTolerance\": 0.01\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/execute",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "orders", "execute"]
+        },
+        "description": "Test validation - should return error for negative amount"
+      },
+      "response": []
+    }
+  ]
+}
