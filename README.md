@@ -8,7 +8,7 @@ A high-performance order execution engine for DEX trading on Solana with intelli
 
 **Public URL**: [Coming Soon - Will be deployed on Railway/Render]
 
-**Video Demo**: [YouTube Link - Coming Soon]
+**Video Demo**: [\[YouTube Link\]](https://www.youtube.com/watch?v=EtKEidGWt9k)
 
 ## 📋 Table of Contents
 
